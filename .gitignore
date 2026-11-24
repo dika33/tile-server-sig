@@ -1,0 +1,18 @@
+# Cache sementara (data GeoJSON & basemap mentah 4096x4096)
+.cache/
+
+# Lingkungan & artefak Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+env/
+
+# File sistem operasi & editor
+.DS_Store
+Thumbs.db
+*.swp
+
+# Catatan: folder tiles/ sengaja TIDAK diabaikan agar seluruh 341 tile PNG
+# dan tiles/manifest.json ikut ter-commit untuk hosting statis di GitHub Pages.

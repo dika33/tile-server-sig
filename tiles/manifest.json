@@ -1,0 +1,66 @@
+{
+  "name": "Static XYZ Map Tile Server - SIG",
+  "theme": "abu-abu-monokrom-minimalis",
+  "projection": "EPSG:3857",
+  "scheme": "xyz",
+  "format": "png",
+  "tile_size": 256,
+  "min_zoom": 0,
+  "max_zoom": 4,
+  "url_template": "./tiles/{z}/{x}/{y}.png",
+  "source_image": "basemap_4096.png",
+  "source_dimensions": [
+    4096,
+    4096
+  ],
+  "total_tiles": 341,
+  "total_bytes": 4343488,
+  "generated_at": "2026-11-24T02:57:56.775232+00:00",
+  "levels": [
+    {
+      "z": 0,
+      "grid": "1x1",
+      "columns": 1,
+      "rows": 1,
+      "tile_count": 1,
+      "world_px": 256,
+      "bytes": 40101
+    },
+    {
+      "z": 1,
+      "grid": "2x2",
+      "columns": 2,
+      "rows": 2,
+      "tile_count": 4,
+      "world_px": 512,
+      "bytes": 129683
+    },
+    {
+      "z": 2,
+      "grid": "4x4",
+      "columns": 4,
+      "rows": 4,
+      "tile_count": 16,
+      "world_px": 1024,
+      "bytes": 389946
+    },
+    {
+      "z": 3,
+      "grid": "8x8",
+      "columns": 8,
+      "rows": 8,
+      "tile_count": 64,
+      "world_px": 2048,
+      "bytes": 1082190
+    },
+    {
+      "z": 4,
+      "grid": "16x16",
+      "columns": 16,
+      "rows": 16,
+      "tile_count": 256,
+      "world_px": 4096,
+      "bytes": 2701568
+    }
+  ]
+}

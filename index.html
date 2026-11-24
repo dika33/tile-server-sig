@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SIG // Static XYZ Map Tile Server</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <a class="skip-link" href="#map">Langsung ke area peta</a>
+
+  <header class="topbar" role="banner">
+    <div class="topbar-left">
+      <button
+        id="drawerToggle"
+        type="button"
+        class="icon-btn"
+        aria-expanded="true"
+        aria-controls="controlDrawer"
+        aria-label="Buka atau tutup panel kontrol"
+        title="Panel kontrol"
+      >
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" aria-hidden="true">
+          <path d="M3 6h18M3 12h18M3 18h18" />
+        </svg>
+      </button>
+      <div class="station-brand">
+        <span class="station-title">SIG // XYZ TILE SERVER</span>
+        <span class="station-sub">EPSG:3857 · MONOKROM MINIMALIS · CROOTJS</span>
+      </div>
+    </div>
+
+    <div class="topbar-right">
+      <div class="telemetry-unit" aria-label="Sumber tile aktif">
+        <span id="sourceLed" class="status-led is-local" aria-hidden="true"></span>
+        <span id="sourceStatus" class="mono-val">LOKAL</span>
+      </div>
+      <div class="telemetry-unit telemetry-coords" aria-label="Koordinat pusat peta">
+        <span id="liveCenter" class="mono-val">LAT -6.9175 · LNG 107.6191 · Z4</span>
+      </div>
+      <button id="focusBandungBtn" type="button" class="action-btn">
+        Fokus Bandung
+      </button>
+    </div>
+  </header>
+
+  <div class="workspace">
+    <div id="drawerBackdrop" class="drawer-backdrop" hidden></div>
+
+    <aside id="controlDrawer" class="drawer" aria-label="Panel kontrol stasiun peta">
+      <div class="drawer-scroll">
+        <!-- 01: Sumber Tile Backend -->
+        <section class="rack-section" aria-labelledby="sec-source-title">
+          <div class="section-head">
+            <h2 id="sec-source-title" class="section-code">01 // SUMBER TILE BACKEND</h2>
+          </div>
+
+          <form id="tileUrlForm" class="url-form" novalidate>
+            <label for="tileUrlInput" class="field-label">
+              Template URL Tile
+            </label>
+            <input
+              id="tileUrlInput"
+              name="tileUrl"
+              type="text"
+              class="text-input mono-val"
+              value="./tiles/{z}/{x}/{y}.png"
+              autocomplete="off"
+              spellcheck="false"
+              aria-describedby="tileUrlHint tileUrlFeedback"
+            >
+            <p id="tileUrlHint" class="field-hint">
+              Wajib memuat placeholder <code>{z}</code>, <code>{x}</code>, dan <code>{y}</code>.
+            </p>
+            <p id="tileUrlFeedback" class="field-feedback" role="status" aria-live="polite"></p>
+
+            <div class="btn-row">
+              <button id="applyUrlBtn" type="submit" class="btn-primary">
+                Terapkan URL
+              </button>
+            </div>
+
+            <div class="btn-pair" role="group" aria-label="Preset sumber tile">
+              <button id="useLocalBtn" type="button" class="btn-secondary is-active" aria-pressed="true">
+                Backend Lokal
+              </button>
+              <button id="compareOsmBtn" type="button" class="btn-secondary" aria-pressed="false">
+                Bandingkan OSM
+              </button>
+            </div>
+          </form>
+        </section>
+
+        <!-- 02: Kontrol Level Zoom -->
+        <section class="rack-section" aria-labelledby="sec-zoom-title">
+          <div class="section-head">
+            <h2 id="sec-zoom-title" class="section-code">02 // LEVEL ZOOM (0–4)</h2>
+            <span id="zoomMeta" class="section-meta mono-val">Z4 · 16×16</span>
+          </div>
+
+          <div class="zoom-grid" role="group" aria-label="Pilih level zoom">
+            <button type="button" class="zoom-btn" data-zoom="0" aria-pressed="false">
+              <span class="zoom-lvl">Z0</span>
+              <span class="zoom-dim">1×1</span>
+            </button>
+            <button type="button" class="zoom-btn" data-zoom="1" aria-pressed="false">
+              <span class="zoom-lvl">Z1</span>
+              <span class="zoom-dim">2×2</span>
+            </button>
+            <button type="button" class="zoom-btn" data-zoom="2" aria-pressed="false">
+              <span class="zoom-lvl">Z2</span>
+              <span class="zoom-dim">4×4</span>
+            </button>
+            <button type="button" class="zoom-btn" data-zoom="3" aria-pressed="false">
+              <span class="zoom-lvl">Z3</span>
+              <span class="zoom-dim">8×8</span>
+            </button>
+            <button type="button" class="zoom-btn is-active" data-zoom="4" aria-pressed="true">
+              <span class="zoom-lvl">Z4</span>
+              <span class="zoom-dim">16×16</span>
+            </button>
+          </div>
+        </section>
+
+        <!-- 03: Inspeksi Klik Peta -->
+        <section class="rack-section" aria-labelledby="sec-inspect-title">
+          <div class="section-head">
+            <h2 id="sec-inspect-title" class="section-code">03 // INSPEKSI KLIK &amp; TILE</h2>
+            <span id="inspectSourceTag" class="section-meta mono-val">REFERENSI</span>
+          </div>
+
+          <div class="kv-grid">
+            <div class="kv-cell">
+              <span class="kv-key">LINTANG (LAT)</span>
+              <span id="inspectLat" class="kv-val mono-val">-6.91750</span>
+            </div>
+            <div class="kv-cell">
+              <span class="kv-key">BUJUR (LNG)</span>
+              <span id="inspectLng" class="kv-val mono-val">107.61910</span>
+            </div>
+            <div class="kv-cell kv-cell-wide">
+              <span class="kv-key">INDEKS TILE {Z, X, Y}</span>
+              <span id="inspectZxy" class="kv-val kv-accent mono-val">Z=4 · X=12 · Y=8</span>
+            </div>
+          </div>
+
+          <div class="tile-inspect-box">
+            <div class="tile-thumb-frame">
+              <img id="inspectThumb" class="tile-thumb" src="./tiles/4/12/8.png" alt="Pratinjau tile mentah yang dipilih" width="68" height="68">
+            </div>
+            <div class="tile-inspect-meta">
+              <span class="kv-key">TAUTAN TILE MENTAH</span>
+              <code id="inspectTileUrl" class="tile-url-code">./tiles/4/12/8.png</code>
+              <a id="inspectTileLink" class="raw-tile-link" href="./tiles/4/12/8.png" target="_blank" rel="noopener">
+                Buka file tile mentah ↗
+              </a>
+            </div>
+          </div>
+        </section>
+
+        <!-- 04: Daftar Request Tile Aktif di Viewport -->
+        <section class="rack-section rack-section-grow" aria-labelledby="sec-requests-title">
+          <div class="section-head">
+            <h2 id="sec-requests-title" class="section-code">04 // REQUEST TILE VIEWPORT</h2>
+            <span id="activeTilesCount" class="section-meta mono-val">0 tile</span>
+          </div>
+
+          <div class="tile-list-header mono-val" aria-hidden="true">
+            <span>{Z}/{X}/{Y}</span>
+            <span>STATUS</span>
+            <span>FILE</span>
+          </div>
+          <ul id="activeTilesList" class="tile-request-list" aria-live="polite">
+            <li class="tile-empty">Memuat tile viewport...</li>
+          </ul>
+        </section>
+
+        <!-- Ringkasan Manifest Static Backend -->
+        <footer class="drawer-footer" aria-label="Informasi manifest backend">
+          <div class="manifest-line">
+            <span class="kv-key">MANIFEST BACKEND</span>
+            <a href="./tiles/manifest.json" target="_blank" rel="noopener" class="manifest-link mono-val">
+              manifest.json ↗
+            </a>
+          </div>
+          <p id="manifestSummary" class="manifest-summary mono-val">
+            Memeriksa ./tiles/manifest.json...
+          </p>
+        </footer>
+      </div>
+    </aside>
+
+    <main class="stage" role="main">
+      <div id="map" class="map-canvas" aria-label="Peta interaktif Static XYZ Map Tile Server"></div>
+    </main>
+  </div>
+
+  <script type="module" src="./app.js"></script>
+</body>
+</html>
