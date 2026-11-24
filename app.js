@@ -37,7 +37,7 @@ const state = {
   center: BANDUNG.position.slice(),
   zoom: 4,
   lastInspected: BANDUNG.position.slice(),
-  lastInspectMode: "REFERENSI",
+  lastInspectMode: "Referensi Bandung",
   tileObserver: null,
   stopMove: null,
   removeScaleBar: null,
@@ -48,7 +48,7 @@ const state = {
 const desktopQuery = window.matchMedia("(min-width: 960px)");
 
 /* ==========================================================================
-   Matematika Proyeksi Web Mercator (EPSG:3857) -> Indeks Tile {Z, X, Y}
+   Proyeksi Web Mercator (EPSG:3857) -> Indeks Tile {Z, X, Y}
    ========================================================================== */
 function clamp(value, min, max) {
   return Math.max(min, Math.min(max, value));
@@ -117,7 +117,7 @@ function validateTileTemplate(raw) {
 }
 
 /* ==========================================================================
-   Helper UI & Popup DOM (aman dari injeksi HTML)
+   Helper UI & Popup DOM
    ========================================================================== */
 function setFeedback(message, tone = "") {
   const el = container("tileUrlFeedback");
@@ -145,18 +145,18 @@ function buildPopupNode(title, lat, lng, tile, resolvedUrl) {
 
   const coords = document.createElement("div");
   coords.className = "popup-row";
-  coords.textContent = `LAT ${lat.toFixed(5)} · LNG ${lng.toFixed(5)}`;
+  coords.textContent = `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
 
   const zxy = document.createElement("div");
   zxy.className = "popup-row";
-  zxy.textContent = `XYZ: Z=${tile.z} / X=${tile.x} / Y=${tile.y}`;
+  zxy.textContent = `Tile Z=${tile.z} · X=${tile.x} · Y=${tile.y}`;
 
   const link = document.createElement("a");
   link.className = "popup-link";
   link.href = resolvedUrl;
   link.target = "_blank";
   link.rel = "noopener";
-  link.textContent = "Buka tile mentah ↗";
+  link.textContent = "Buka file tile mentah ↗";
 
   wrap.append(heading, coords, zxy, link);
   return wrap;
@@ -173,13 +173,13 @@ function updateSourceIndicators() {
 
   ledEl.classList.remove("is-local", "is-osm", "is-custom");
   if (isLocal) {
-    statusEl.textContent = "LOKAL";
+    statusEl.textContent = "Lokal";
     ledEl.classList.add("is-local");
   } else if (isOsm) {
     statusEl.textContent = "OSM";
     ledEl.classList.add("is-osm");
   } else {
-    statusEl.textContent = "CUSTOM";
+    statusEl.textContent = "Custom";
     ledEl.classList.add("is-custom");
   }
 
@@ -194,16 +194,16 @@ function updateZoomControls(zoom) {
   const z = clamp(Math.round(zoom), MIN_ZOOM, MAX_ZOOM);
   const grid = Math.pow(2, z);
   const total = grid * grid;
-  setInnerText("zoomMeta", `Z${z} · ${grid}×${grid} (${total})`);
+  setInnerText("zoomMeta", `Z${z} · ${grid}×${grid} (${total} tile)`);
 
-  document.querySelectorAll(".zoom-btn").forEach((btn) => {
+  document.querySelectorAll(".zoom-step").forEach((btn) => {
     const active = Number(btn.dataset.zoom) === z;
     btn.classList.toggle("is-active", active);
     btn.setAttribute("aria-pressed", String(active));
   });
 }
 
-function updateInspection(position, modeLabel = "KLIK PETA") {
+function updateInspection(position, modeLabel = "Klik Peta") {
   const [lng, lat] = position;
   state.lastInspected = [lng, lat];
   state.lastInspectMode = modeLabel;
@@ -214,7 +214,7 @@ function updateInspection(position, modeLabel = "KLIK PETA") {
   setInnerText("inspectSourceTag", modeLabel);
   setInnerText("inspectLat", lat.toFixed(5));
   setInnerText("inspectLng", lng.toFixed(5));
-  setInnerText("inspectZxy", `Z=${tile.z} · X=${tile.x} · Y=${tile.y}`);
+  setInnerText("inspectZxy", `${tile.z} / ${tile.x} / ${tile.y}`);
   setInnerText("inspectTileUrl", rawUrl);
 
   const linkEl = container("inspectTileLink");
@@ -250,30 +250,24 @@ function renderActiveTilesList() {
   const entries = imgs.map((img) => {
     const rawAttr = img.getAttribute("src") || img.src;
     const coords = parseTileCoordsFromSrc(rawAttr);
-    let status = "LOAD";
+    let status = "Muat";
     let statusClass = "is-load";
 
     if (img.dataset.tileState === "err" || (img.complete && img.naturalWidth === 0)) {
-      status = "ERR";
+      status = "Gagal";
       statusClass = "is-err";
     } else if (
       img.dataset.tileState === "ok" ||
       img.classList.contains("crootjs-map-tile-loaded") ||
       (img.complete && img.naturalWidth > 0)
     ) {
-      status = "OK";
+      status = "200";
       statusClass = "is-ok";
     }
 
-    return {
-      rawUrl: rawAttr,
-      coords,
-      status,
-      statusClass,
-    };
+    return { rawUrl: rawAttr, coords, status, statusClass };
   });
 
-  // Urutkan berdasarkan Z desc, lalu X asc, Y asc
   entries.sort((a, b) => {
     if (!a.coords || !b.coords) return a.rawUrl.localeCompare(b.rawUrl);
     if (b.coords.z !== a.coords.z) return b.coords.z - a.coords.z;
@@ -281,13 +275,13 @@ function renderActiveTilesList() {
     return a.coords.y - b.coords.y;
   });
 
-  const loadedCount = entries.filter((e) => e.status === "OK").length;
-  countEl.textContent = `${entries.length} aktif · ${loadedCount} OK`;
+  const okCount = entries.filter((e) => e.status === "200").length;
+  countEl.textContent = `${entries.length} aktif · ${okCount} OK`;
 
   listEl.replaceChildren();
   if (entries.length === 0) {
     const empty = document.createElement("li");
-    empty.className = "tile-empty";
+    empty.className = "req-empty";
     empty.textContent = "Belum ada request tile aktif.";
     listEl.appendChild(empty);
     return;
@@ -296,29 +290,27 @@ function renderActiveTilesList() {
   const fragment = document.createDocumentFragment();
   entries.forEach((entry) => {
     const li = document.createElement("li");
-    li.className = "tile-request-item";
+    li.className = "req-item";
 
     const a = document.createElement("a");
-    a.className = "tile-row-link";
+    a.className = "req-link";
     a.href = entry.rawUrl;
     a.target = "_blank";
     a.rel = "noopener";
 
     const coordSpan = document.createElement("span");
-    coordSpan.className = "tile-coord";
+    coordSpan.className = "req-xyz";
     coordSpan.textContent = entry.coords
       ? `${entry.coords.z}/${entry.coords.x}/${entry.coords.y}`
       : "tile";
 
     const statusSpan = document.createElement("span");
-    statusSpan.className = `tile-status ${entry.statusClass}`;
+    statusSpan.className = `req-status ${entry.statusClass}`;
     statusSpan.textContent = entry.status;
 
     const fileSpan = document.createElement("span");
-    fileSpan.className = "tile-file";
-    fileSpan.textContent = entry.coords
-      ? `${entry.coords.y}.png ↗`
-      : "buka ↗";
+    fileSpan.className = "req-file";
+    fileSpan.textContent = entry.coords ? `${entry.coords.y}.png ↗` : "buka ↗";
 
     a.append(coordSpan, statusSpan, fileSpan);
     li.appendChild(a);
@@ -413,14 +405,13 @@ function mountMap(tileUrl, center = state.center, zoom = state.zoom) {
     tiles: tileUrl,
     attribution: isOsm
       ? undefined
-      : "Basemap Monokrom · Natural Earth 50m (EPSG:3857)",
+      : "Monokrom Minimalis · Natural Earth 50m (EPSG:3857)",
     zoomControl: true,
     scrollZoom: true,
   });
 
   state.removeScaleBar = addScaleBar(MAP_ID, "bottom-left");
 
-  // Marker titik referensi Bandung
   const bandungTile = latLngToTile(BANDUNG.lat, BANDUNG.lng, state.zoom);
   const bandungTileUrl = resolveTileUrl(
     state.tileUrl,
@@ -430,18 +421,18 @@ function mountMap(tileUrl, center = state.center, zoom = state.zoom) {
   );
 
   state.bandungMarker = addMarker(MAP_ID, BANDUNG.position, {
-    color: "#d97706",
+    color: "#d94e3b",
     label: "Bandung",
     title: "Titik Referensi: Bandung (-6.9175, 107.6191)",
     popup: buildPopupNode(
-      "TITIK REFERENSI // BANDUNG",
+      "Bandung · Titik Referensi",
       BANDUNG.lat,
       BANDUNG.lng,
       bandungTile,
       bandungTileUrl
     ),
     onClick: () => {
-      updateInspection(BANDUNG.position, "REFERENSI");
+      updateInspection(BANDUNG.position, "Referensi Bandung");
     },
   });
 
@@ -452,7 +443,7 @@ function mountMap(tileUrl, center = state.center, zoom = state.zoom) {
     const zRound = clamp(Math.round(view.zoom), MIN_ZOOM, MAX_ZOOM);
     setInnerText(
       "liveCenter",
-      `LAT ${view.center[1].toFixed(4)} · LNG ${view.center[0].toFixed(4)} · Z${zRound}`
+      `${view.center[1].toFixed(4)}, ${view.center[0].toFixed(4)} · Z${zRound}`
     );
     updateZoomControls(view.zoom);
     updateInspection(state.lastInspected, state.lastInspectMode);
@@ -466,11 +457,11 @@ function mountMap(tileUrl, center = state.center, zoom = state.zoom) {
     const tile = latLngToTile(lat, lng, z);
     const rawUrl = resolveTileUrl(state.tileUrl, tile.z, tile.x, tile.y);
 
-    updateInspection(position, "KLIK PETA");
+    updateInspection(position, "Klik Peta");
     showPopup(
       MAP_ID,
       position,
-      buildPopupNode("INSPEKSI KOORDINAT", lat, lng, tile, rawUrl)
+      buildPopupNode("Inspeksi Koordinat", lat, lng, tile, rawUrl)
     );
   });
 
@@ -478,32 +469,37 @@ function mountMap(tileUrl, center = state.center, zoom = state.zoom) {
   updateZoomControls(state.zoom);
   setInnerText(
     "liveCenter",
-    `LAT ${state.center[1].toFixed(4)} · LNG ${state.center[0].toFixed(4)} · Z${Math.round(state.zoom)}`
+    `${state.center[1].toFixed(4)}, ${state.center[0].toFixed(4)} · Z${Math.round(state.zoom)}`
   );
   updateInspection(state.lastInspected, state.lastInspectMode);
   observeTilePane();
 }
 
 /* ==========================================================================
-   Kontrol Drawer Kiri (Responsif Desktop & Mobile)
+   Kontrol Drawer Kiri (Desktop & Mobile)
    ========================================================================== */
 function setDrawerState(open) {
   const drawer = container("controlDrawer");
-  const toggleBtn = container("drawerToggle");
+  const openBtn = container("drawerOpenBtn");
   const backdrop = container("drawerBackdrop");
-  if (!drawer || !toggleBtn || !backdrop) return;
+  const stage = document.querySelector(".map-stage");
+  if (!drawer || !openBtn || !backdrop || !stage) return;
 
   const isDesktop = desktopQuery.matches;
-  toggleBtn.setAttribute("aria-expanded", String(open));
+  openBtn.setAttribute("aria-expanded", String(open));
 
   if (isDesktop) {
     drawer.classList.remove("is-open");
     drawer.classList.toggle("is-collapsed", !open);
     backdrop.hidden = true;
+    openBtn.hidden = open;
+    stage.classList.toggle("has-floating-toggle", !open);
   } else {
     drawer.classList.remove("is-collapsed");
     drawer.classList.toggle("is-open", open);
     backdrop.hidden = !open;
+    openBtn.hidden = false;
+    stage.classList.add("has-floating-toggle");
   }
 }
 
@@ -523,16 +519,13 @@ async function loadManifest() {
     const res = await fetch("./tiles/manifest.json", { cache: "no-cache" });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
-    const kb = (data.total_bytes / 1024).toFixed(1);
+    const mb = (data.total_bytes / (1024 * 1024)).toFixed(2);
     setInnerText(
       "manifestSummary",
-      `${data.total_tiles} tile PNG · Z${data.min_zoom}–Z${data.max_zoom} · ${data.projection} · ${kb} KB`
+      `${data.projection} · ${data.total_tiles} tile (Z${data.min_zoom}–Z${data.max_zoom}) · ${mb} MB`
     );
   } catch {
-    setInnerText(
-      "manifestSummary",
-      "Manifest tidak dapat dibaca (jalankan lewat server HTTP/GitHub Pages)."
-    );
+    setInnerText("manifestSummary", "EPSG:3857 · Z0–Z4 (jalankan via HTTP)");
   }
 }
 
@@ -540,15 +533,20 @@ async function loadManifest() {
    Bootstrap Aplikasi
    ========================================================================== */
 runAfterDOM(() => {
-  // Status awal drawer: terbuka di desktop, tertutup di tablet/mobile agar peta lega
   setDrawerState(desktopQuery.matches);
 
   desktopQuery.addEventListener("change", (event) => {
     setDrawerState(event.matches);
   });
 
-  onClick("drawerToggle", () => {
-    setDrawerState(!isDrawerOpen());
+  onClick("drawerOpenBtn", () => {
+    setDrawerState(true);
+    container("drawerCloseBtn")?.focus();
+  });
+
+  onClick("drawerCloseBtn", () => {
+    setDrawerState(false);
+    container("drawerOpenBtn")?.focus();
   });
 
   onClick("drawerBackdrop", () => {
@@ -558,11 +556,10 @@ runAfterDOM(() => {
   document.addEventListener("keydown", (event) => {
     if (event.key === "Escape" && !desktopQuery.matches && isDrawerOpen()) {
       setDrawerState(false);
-      container("drawerToggle")?.focus();
+      container("drawerOpenBtn")?.focus();
     }
   });
 
-  // Form ganti template URL tile
   const form = container("tileUrlForm");
   form?.addEventListener("submit", (event) => {
     event.preventDefault();
@@ -589,7 +586,7 @@ runAfterDOM(() => {
       view ? view.center : state.center,
       view ? view.zoom : state.zoom
     );
-    setFeedback("Beralih ke backend statis lokal (./tiles/{z}/{x}/{y}.png).", "ok");
+    setFeedback("Menggunakan tile statis lokal (./tiles/{z}/{x}/{y}.png).", "ok");
   });
 
   onClick("compareOsmBtn", () => {
@@ -605,18 +602,17 @@ runAfterDOM(() => {
 
   onClick("focusBandungBtn", () => {
     setMapView(MAP_ID, BANDUNG.position, 4);
-    updateInspection(BANDUNG.position, "REFERENSI");
+    updateInspection(BANDUNG.position, "Referensi Bandung");
     const tile = latLngToTile(BANDUNG.lat, BANDUNG.lng, 4);
     const rawUrl = resolveTileUrl(state.tileUrl, tile.z, tile.x, tile.y);
     showPopup(
       MAP_ID,
       BANDUNG.position,
-      buildPopupNode("TITIK REFERENSI // BANDUNG", BANDUNG.lat, BANDUNG.lng, tile, rawUrl)
+      buildPopupNode("Bandung · Titik Referensi", BANDUNG.lat, BANDUNG.lng, tile, rawUrl)
     );
   });
 
-  // Tombol perpindahan level zoom 0..4
-  document.querySelectorAll(".zoom-btn").forEach((btn) => {
+  document.querySelectorAll(".zoom-step").forEach((btn) => {
     btn.addEventListener("click", () => {
       const targetZoom = Number(btn.dataset.zoom);
       const view = getMapView(MAP_ID);
@@ -625,7 +621,6 @@ runAfterDOM(() => {
     });
   });
 
-  // Pasang peta perdana dengan backend lokal
   mountMap(LOCAL_TILE_URL, BANDUNG.position, 4);
   loadManifest();
 });
